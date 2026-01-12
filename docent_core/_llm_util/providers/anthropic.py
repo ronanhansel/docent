@@ -206,6 +206,7 @@ async def get_anthropic_chat_completion_streaming_async(
     logprobs: bool = False,
     top_logprobs: int | None = None,
     timeout: float = 5.0,
+    response_format: dict[str, Any] | None = None,
 ):
     if logprobs or top_logprobs is not None:
         raise NotImplementedError(
@@ -382,6 +383,7 @@ async def get_anthropic_chat_completion_async(
     logprobs: bool = False,
     top_logprobs: int | None = None,
     timeout: float = 5.0,
+    response_format: dict[str, Any] | None = None,
 ) -> LLMOutput:
     """
     Note from kevin 1/29/2025:

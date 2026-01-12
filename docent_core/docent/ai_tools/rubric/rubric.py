@@ -1,5 +1,6 @@
 import enum
 import json
+from json import JSONDecodeError
 from typing import Any, Protocol, cast
 from uuid import uuid4
 
@@ -247,12 +248,25 @@ def _get_prompt_resolver(rubric: Rubric, ar: AgentRun, prompt_template: str):
     return _prompt_resolver
 
 
+def _extract_json_object(text: str) -> str:
+    """Best-effort extraction of a JSON object from raw LLM output."""
+    if not text:
+        return text
+    text = text.strip()
+    start = text.find("{")
+    end = text.rfind("}")
+    if start != -1 and end != -1 and end >= start:
+        text = text[start : end + 1]
+    return text.strip()
+
+
 async def evaluate_rubric(
     agent_runs: list[AgentRun],
     rubric: Rubric,
     api_key_overrides: dict[str, str] | None = None,
     callback: JudgeResultStreamingCallback | None = None,
     max_recall: bool = False,
+    response_format: dict[str, Any] | None = None,
 ):
     rubric_prompt = RUBRIC_MAX_RECALL_PROMPT if max_recall else RUBRIC_PROMPT
     result_type = ResultType.NEAR_MISS if max_recall else ResultType.DIRECT_RESULT
@@ -279,11 +293,20 @@ async def evaluate_rubric(
             if callback is not None
             else None
         ),
+        response_format=response_format,
     )
 
     ans: list[dict[str, Any] | None] = [None] * len(prompt_resolvers)
     for i, output in enumerate(outputs):
-        parsed_output = json.loads(output.first_text) if output.first_text else None
+        raw_text = _extract_json_object(output.first_text or "")
+        if not raw_text:
+            parsed_output = None
+        else:
+            try:
+                parsed_output = json.loads(raw_text, strict=False)
+            except JSONDecodeError as exc:
+                logger.error(f"Failed to parse rubric output as JSON: {exc}. Output: {raw_text}")
+                parsed_output = None
         if isinstance(parsed_output, dict):
             parsed_output = cast(dict[str, Any], parsed_output)
             ans[i] = _validate_rubric_output(parsed_output, rubric.output_schema, agent_runs[i])

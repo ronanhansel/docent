@@ -198,12 +198,16 @@ async def get_openai_chat_completion_streaming_async(
     logprobs: bool = False,
     top_logprobs: int | None = None,
     timeout: float = 30.0,
+    response_format: dict[str, Any] | None = None,
 ):
     input_messages = _parse_chat_messages(messages)
     input_tools = _parse_tools(tools) if tools else omit
 
     try:
         async with async_timeout_ctx(timeout):
+            kwargs: dict[str, Any] = {}
+            if response_format is not None:
+                kwargs["response_format"] = response_format
             stream = await client.chat.completions.create(
                 model=model_name,
                 messages=input_messages,
@@ -216,6 +220,7 @@ async def get_openai_chat_completion_streaming_async(
                 top_logprobs=top_logprobs,
                 stream_options={"include_usage": True},
                 stream=True,
+                **kwargs,
             )
 
             llm_output_partial = None
@@ -381,12 +386,16 @@ async def get_openai_chat_completion_async(
     logprobs: bool = False,
     top_logprobs: int | None = None,
     timeout: float = 5.0,
+    response_format: dict[str, Any] | None = None,
 ) -> LLMOutput:
     input_messages = _parse_chat_messages(messages)
     input_tools = _parse_tools(tools) if tools else omit
 
     try:
         async with async_timeout_ctx(timeout):  # type: ignore
+            kwargs: dict[str, Any] = {}
+            if response_format is not None:
+                kwargs["response_format"] = response_format
             raw_output = await client.chat.completions.create(
                 model=model_name,
                 messages=input_messages,
@@ -397,6 +406,7 @@ async def get_openai_chat_completion_async(
                 reasoning_effort=reasoning_effort or omit,
                 logprobs=logprobs,
                 top_logprobs=top_logprobs,
+                **kwargs,
             )
 
             # If the completion is empty and was truncated (likely due to too much reasoning), raise an exception

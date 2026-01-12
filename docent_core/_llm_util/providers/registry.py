@@ -45,6 +45,7 @@ class SingleOutputGetter(Protocol):
         logprobs: bool,
         top_logprobs: int | None,
         timeout: float,
+        response_format: dict[str, Any] | None = None,
     ) -> LLMOutput:
         """Get a single completion from an LLM.
 
@@ -89,6 +90,7 @@ class SingleStreamingOutputGetter(Protocol):
         logprobs: bool,
         top_logprobs: int | None,
         timeout: float,
+        response_format: dict[str, Any] | None = None,
     ) -> LLMOutput:
         """Get a streaming completion from an LLM.
 

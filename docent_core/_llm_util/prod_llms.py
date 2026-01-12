@@ -91,6 +91,7 @@ async def _parallelize_calls(
     semaphore: AsyncContextManager[anyio.Semaphore] | None,
     # use_tqdm: bool,
     cache: LLMCache | None = None,
+    response_format: dict[str, Any] | None = None,
 ):
     base_func = partial(
         single_output_getter,
@@ -104,6 +105,7 @@ async def _parallelize_calls(
         logprobs=logprobs,
         top_logprobs=top_logprobs,
         timeout=timeout,
+        response_format=response_format,
     )
 
     responses: list[LLMOutput | None] = [None for _ in inputs]
@@ -280,6 +282,7 @@ class LLMManager:
         timeout: float = 5.0,
         streaming_callback: AsyncLLMOutputStreamingCallback | None = None,
         completion_callback: AsyncLLMOutputStreamingCallback | None = None,
+        response_format: dict[str, Any] | None = None,
     ) -> list[LLMOutput]:
         while True:
             # Parse the current model option
@@ -320,6 +323,7 @@ class LLMManager:
                     anyio.Semaphore(max_concurrency) if max_concurrency is not None else None
                 ),
                 cache=self.cache,
+                response_format=response_format,
             )
             assert len(outputs) == len(inputs), "Number of outputs must match number of messages"
 
@@ -370,6 +374,7 @@ async def get_llm_completions_async(
     completion_callback: AsyncLLMOutputStreamingCallback | None = None,
     use_cache: bool = False,
     api_key_overrides: dict[str, str] | None = None,
+    response_format: dict[str, Any] | None = None,
 ) -> list[LLMOutput]:
     # We don't support logprobs for Anthropic yet
     if logprobs:
@@ -398,4 +403,5 @@ async def get_llm_completions_async(
         timeout=timeout,
         streaming_callback=streaming_callback,
         completion_callback=completion_callback,
+        response_format=response_format,
     )
