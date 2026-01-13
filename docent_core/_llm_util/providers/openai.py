@@ -18,8 +18,13 @@ from openai import (
     PermissionDeniedError,
     RateLimitError,
     UnprocessableEntityError,
-    omit,
+    NOT_GIVEN,
 )
+
+try:  # maintain compatibility with both legacy and latest openai clients
+    from openai import omit  # type: ignore
+except ImportError:
+    omit = NOT_GIVEN
 from openai.types.chat import (
     ChatCompletion,
     ChatCompletionAssistantMessageParam,
