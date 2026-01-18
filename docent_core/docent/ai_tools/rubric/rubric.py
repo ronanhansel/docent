@@ -267,6 +267,8 @@ async def evaluate_rubric(
     callback: JudgeResultStreamingCallback | None = None,
     max_recall: bool = False,
     response_format: dict[str, Any] | None = None,
+    max_concurrency: int = 100,
+    use_cache: bool = True,
 ):
     rubric_prompt = RUBRIC_MAX_RECALL_PROMPT if max_recall else RUBRIC_PROMPT
     result_type = ResultType.NEAR_MISS if max_recall else ResultType.DIRECT_RESULT
@@ -280,7 +282,8 @@ async def evaluate_rubric(
         [rubric.judge_model],
         max_new_tokens=8192,
         timeout=180.0,
-        use_cache=True,
+        use_cache=use_cache,
+        max_concurrency=max_concurrency,
         api_key_overrides=api_key_overrides,
         completion_callback=(
             _get_llm_callback(
