@@ -197,12 +197,12 @@ async def get_openai_chat_completion_streaming_async(
     model_name: str,
     tools: list[ToolInfo] | None = None,
     tool_choice: Literal["auto", "required"] | None = None,
-    max_new_tokens: int = 32,
+    max_new_tokens: int = 16384,
     temperature: float = 1.0,
     reasoning_effort: Literal["low", "medium", "high"] | None = None,
     logprobs: bool = False,
     top_logprobs: int | None = None,
-    timeout: float = 30.0,
+    timeout: float = 120.0,
     response_format: dict[str, Any] | None = None,
 ):
     input_messages = _parse_chat_messages(messages)
@@ -385,12 +385,12 @@ async def get_openai_chat_completion_async(
     model_name: str,
     tools: list[ToolInfo] | None = None,
     tool_choice: Literal["auto", "none", "required"] | None = None,
-    max_new_tokens: int = 32,
+    max_new_tokens: int = 16384,
     temperature: float = 1.0,
     reasoning_effort: Literal["low", "medium", "high"] | None = None,
     logprobs: bool = False,
     top_logprobs: int | None = None,
-    timeout: float = 5.0,
+    timeout: float = 120.0,
     response_format: dict[str, Any] | None = None,
 ) -> LLMOutput:
     input_messages = _parse_chat_messages(messages)
