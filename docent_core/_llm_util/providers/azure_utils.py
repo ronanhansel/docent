@@ -1,5 +1,4 @@
 import os
-import sys
 from typing import Optional, Callable, Any
 
 # Try to import azure-identity (may not be available in all environments)
@@ -35,6 +34,12 @@ class MSALTokenProvider:
     def __init__(self, scope: str = 'api://trapi/.default'):
         self.scope = scope
         self.cache_path = os.path.expanduser('~/.azure/msal_token_cache.json')
+        
+        # Use a local lock file to avoid permission issues in ~/.azure
+        self.lock_path = os.path.join(os.getcwd(), ".tmp", "msal_token_cache.lock")
+        # Ensure .tmp exists
+        os.makedirs(os.path.dirname(self.lock_path), exist_ok=True)
+        
         self._last_token_time = None
         self._token_refresh_count = 0
         self._lock_held = False
@@ -61,10 +66,9 @@ class MSALTokenProvider:
             except Exception:
                 return False
 
-        lock_path = self.cache_path + ".lock"
         try:
             import fcntl
-            with open(lock_path, 'a+') as lock_file:
+            with open(self.lock_path, 'a+') as lock_file:
                 fcntl.flock(lock_file, fcntl.LOCK_SH)
                 try:
                     with open(self.cache_path, 'r') as f:
@@ -87,20 +91,18 @@ class MSALTokenProvider:
                 except Exception:
                     return
 
-            lock_path = self.cache_path + ".lock"
             try:
                 import fcntl
-                with open(lock_path, 'a+') as lock_file:
+                with open(self.lock_path, 'a+') as lock_file:
                     fcntl.flock(lock_file, fcntl.LOCK_EX)
                     try:
                         with open(self.cache_path, 'w') as f:
                             f.write(self.cache.serialize())
-                        # print(f"[MSALTokenProvider] Cache persisted to disk")
+                        print(f"[MSALTokenProvider] Cache persisted to disk")
                     finally:
                         fcntl.flock(lock_file, fcntl.LOCK_UN)
             except Exception as e:
-                pass
-                # print(f"[MSALTokenProvider] Failed to save cache: {e}")
+                print(f"[MSALTokenProvider] Failed to save cache: {e}")
 
     def _find_valid_at_in_cache(self, accounts):
         import time
@@ -139,18 +141,17 @@ class MSALTokenProvider:
         if token:
             return token
 
-        # print(f"[MSALTokenProvider] Fast path miss - waiting for lock...")
+        print(f"[MSALTokenProvider] Fast path miss - waiting for lock...")
         start_wait = time.time()
 
         # 2. Slow Path
-        lock_path = self.cache_path + ".lock"
-        with open(lock_path, 'a+') as lock_file:
+        with open(self.lock_path, 'a+') as lock_file:
             fcntl.flock(lock_file, fcntl.LOCK_EX)
             self._lock_held = True
             try:
                 wait_time = time.time() - start_wait
-                # if wait_time > 1.0:
-                #     print(f"[MSALTokenProvider] Lock acquired (waited {wait_time:.2f}s)")
+                if wait_time > 1.0:
+                    print(f"[MSALTokenProvider] Lock acquired (waited {wait_time:.2f}s)")
                 
                 self._load_cache()
                 accounts = self.app.get_accounts()
@@ -160,13 +161,13 @@ class MSALTokenProvider:
 
                 token = self._find_valid_at_in_cache(accounts)
                 if token:
-                    # print(f"[MSALTokenProvider] Token found after reload")
+                    print(f"[MSALTokenProvider] Token found after reload")
                     return token
 
                 # 3. Refresh
                 last_error = None
                 for i, account in enumerate(accounts):
-                    # username = account.get('username', 'unknown')
+                    username = account.get('username', 'unknown')
                     result = self.app.acquire_token_silent([self.scope], account=account)
 
                     if result and 'access_token' in result:
@@ -174,8 +175,8 @@ class MSALTokenProvider:
                         self._token_refresh_count += 1
                         self._last_token_time = time.time()
 
-                        # if self._token_refresh_count == 1 or self._token_refresh_count % 100 == 0:
-                        #     print(f"[MSALTokenProvider] Token refreshed (count: {self._token_refresh_count}, account: {username})")
+                        if self._token_refresh_count == 1 or self._token_refresh_count % 100 == 0:
+                            print(f"[MSALTokenProvider] Token refreshed (count: {self._token_refresh_count}, account: {username})")
 
                         return result['access_token']
                     if result:
