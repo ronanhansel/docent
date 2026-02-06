@@ -447,7 +447,25 @@ def get_azure_openai_client_async(api_key: str | None = None) -> AsyncAzureOpenA
     # Technically you don't have to run this, but just makes clear where the envvars are used
     _ = ENV
 
-    return AsyncAzureOpenAI(api_key=api_key) if api_key else AsyncAzureOpenAI()
+    if api_key:
+        return AsyncAzureOpenAI(api_key=api_key)
+
+    # Attempt to use auto-refreshing token provider to solve token expiration issues
+    try:
+        from docent_core._llm_util.providers.azure_utils import get_azure_token_provider
+        import os
+        
+        # Default scope for TRAPI/Azure
+        scope = os.environ.get("AZURE_OPENAI_SCOPE", "api://trapi/.default")
+        token_provider = get_azure_token_provider(scope)
+        
+        if token_provider:
+            return AsyncAzureOpenAI(azure_ad_token_provider=token_provider)
+    except Exception as e:
+        # Fallback to default behavior if token provider fails or imports are missing
+        logger.warning(f"Failed to use Azure token provider: {e}")
+
+    return AsyncAzureOpenAI()
 
 
 def chunk_and_tokenize(
