@@ -280,8 +280,8 @@ async def evaluate_rubric(
     outputs = await get_llm_completions_async(
         prompt_resolvers,
         [rubric.judge_model],
-        max_new_tokens=8192,
-        timeout=180.0,
+        max_new_tokens=16384,
+        timeout=300.0,
         use_cache=use_cache,
         max_concurrency=max_concurrency,
         api_key_overrides=api_key_overrides,
